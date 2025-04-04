@@ -16,6 +16,7 @@ int main()
     int n;
     cout << "n =  ";
     cin >> n;
+
     vector<vector<int> > magiCuadrado(n, vector<int>(n, 0));
     vector<bool> visitados(n * n, false);
     using std::chrono::high_resolution_clock;

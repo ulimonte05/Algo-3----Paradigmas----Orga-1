@@ -123,20 +123,30 @@ foldNat :: (Nat -> b -> b) -> b -> [Nat] -> b
 foldNat f z [] = z
 foldNat f z (x:xs) = f x (foldr f z xs)
 
-data Arbol a = Hoja a | Nodo a (Arbol a) (Arbol a)
+data Arbol a = Hoja a | Nodo (Arbol a) a (Arbol a)
     deriving Show
 
 foldAb :: (a -> b) -> (b -> a -> b -> b) -> Arbol a -> b
 foldAb fHoja fNodo (Hoja a) = fHoja a
-foldAb fHoja fNodo (Nodo r i d) =
+foldAb fHoja fNodo (Nodo i r d) =
     fNodo (foldAb fHoja fNodo i) r (foldAb fHoja fNodo d)
 
+foldAb2 :: (a -> b) -> (b -> a -> b -> b) -> Arbol a -> b
+foldAb2 fHoja fNodo ab =
+    case ab of
+        Hoja ab -> fHoja ab
+        Nodo i r d -> fNodo (foldAb fHoja fNodo i) r (foldAb fHoja fNodo d)
+
+recrAb :: b -> (a -> Arbol a -> Arbol a -> b -> b -> b) -> Arbol a -> b
+recrAb z fNodo (Hoja ab) = z
+recrAb z fNodo (Nodo i r d) = fNodo r i d (recrAb z fNodo i) (recrAb z fNodo d)
+
+
 aej :: Arbol Int
-aej = Nodo 0 (Hoja 4)
-             (Nodo 9 (Hoja 5) (Hoja 7))
+aej = Nodo (Hoja 0) 1 (Nodo (Hoja 5) 2 (Hoja 7))
 
 espejo :: Arbol a -> Arbol a
-espejo = foldAb Hoja (\resi r resd -> Nodo r resd resi)
+espejo = foldAb2 Hoja (\resi r resd -> Nodo resd r resi)
 
 
 ramas :: Arbol a -> [[a]]
@@ -145,11 +155,40 @@ ramas = foldAb
     (\i r d -> map (r :) i ++ map (r :) d)
 
 insertarAbb :: (Ord a) => a -> Arbol a -> Arbol a
-insertarAbb x (Hoja a) = Nodo x (Hoja a) (Hoja a)
-insertarAbb x (Nodo r i d) =
-    if(x < r)
-        then Nodo r (insertarAbb x i) d
-        else Nodo r i (insertarAbb x d)
+insertarAbb x (Hoja a) = Nodo (Hoja a) x (Hoja a)
+insertarAbb x (Nodo i r d) =
+    if x < r
+        then Nodo (insertarAbb x i) r d
+        else Nodo i r (insertarAbb x d)
+
+data RoseTree a = Rose a [RoseTree a]
+
+deriving instance (Show a) => Show (RoseTree a)
+
+foldRt :: (a -> [b] -> b) -> RoseTree a -> b
+foldRt fRose (Rose a hijos) = fRose a (map (foldRt fRose) hijos)
+
+alturaRt :: RoseTree a -> Int
+alturaRt = foldRt (\r alturahijos ->
+                                case alturahijos of
+                                    [] -> 1
+                                    _ -> maximum (map (+1) alturahijos)
+                                    )
 
 
+type Conj a = (a -> Bool)
 
+perteneceC :: a -> Conj a -> Bool
+perteneceC x f = f x
+
+vacio :: Conj a
+vacio = const False
+
+agregar :: Eq a => a -> Conj a -> Conj a
+agregar x f = (\y -> if x == y then True else False)
+
+compose :: [a -> a] -> (a -> a)
+compose = foldr (.) id
+
+entrelazar2 :: [a] -> [a] -> [a]
+entrelazar2 = foldr (\x rec ys -> if null ys then x : rec [] else x : head ys : rec []) (const [])
